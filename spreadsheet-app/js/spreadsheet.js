@@ -1,4 +1,4 @@
-/**
+    /**
  * Excel Lite Spreadsheet
  * Core spreadsheet functionality
  */
@@ -864,9 +864,52 @@ class Spreadsheet {
             // Save state for undo
             this.saveStateForUndo();
             
-            // Parse CSV
-            const rows = csvContent.split('\n');
-            const data = rows.map(row => row.split(',').map(cell => cell.trim()));
+            // Fix CSV import for quoted values          
+            if (!csvContent.trim()) {
+                throw new Error('CSV file is empty');
+            }
+
+            const data = [];
+            let row = [];
+            let cell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < csvContent.length; i++) {
+                const char = csvContent[i];
+
+                if (char === '"') {
+                    if (inQuotes && csvContent[i + 1] === '"') {
+                        cell += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    row.push(cell.trim());
+                    cell = '';
+                } else if (
+                    (char === '\n' || char === '\r') &&
+                    !inQuotes
+                ) {
+                    if (char === '\r' && csvContent[i + 1] === '\n') {
+                        i++;
+                    }
+            
+                    row.push(cell.trim());
+                    data.push(row);
+                    row = [];
+                    cell = '';
+                } else {
+                    cell += char;
+                }
+            }
+
+            if (cell.length > 0 || row.length > 0) {
+                row.push(cell.trim());
+                data.push(row);
+            }
+
+            
             
             // Create new sheet with the imported data
             const newSheet = {
